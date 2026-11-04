@@ -139,6 +139,12 @@
     border-color: var(--rose);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--rose) 30%, transparent);
   }
+  .swatch.auto {
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #fff 0 50%, #2b2326 50% 100%);
+    color: #ff3d7f; font-size: .78rem; font-weight: 800; line-height: 1;
+    text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+  }
   .color-custom {
     display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
     font-size: .78rem; color: var(--muted);

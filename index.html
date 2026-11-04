@@ -16,7 +16,7 @@
 
 
 <div class="fondo-botanico" aria-hidden="true"></div><div class="fondo-botanico abajo" aria-hidden="true"></div>
-<div class="amor-popup" id="amorPopup" role="dialog" aria-modal="true" aria-labelledby="amorPopupTxt">
+<div class="amor-popup" id="amorPopup" role="dialog" aria-modal="true" aria-labelledby="amorPopupTxt" hidden>
   <div class="amor-card">
     <p id="amorPopupTxt">disfruta amor &lt;3!!!</p>
     <button type="button" id="amorPopupBtn">Cerrar</button>
@@ -119,9 +119,6 @@
             <button class="tb" type="button" data-act="undo">Deshacer</button>
             <button class="tb" type="button" data-act="redo">Rehacer</button>
             <button class="tb danger" type="button" data-act="clr">Vaciar ramo</button>
-          </div>
-          <div class="trow">
-            <button class="tb" type="button" data-act="share">Compartir enlace</button>
           </div>
           <a class="btn primary next" id="next" href="#">Siguiente: escribir la dedicatoria →</a>
           <div class="layers" id="layersWrap" hidden>
@@ -341,25 +338,6 @@ function importarRamo(o,opts){
 function enlaceCompartir(){
   return location.origin+location.pathname+'?d='+b64e(JSON.stringify(exportarRamo()));
 }
-function compartir(){
-  if(!countKind(false))return toast('Añade al menos una flor antes de compartir');
-  if(location.protocol==='file:'){
-    console.warn('[rama] compartir por enlace no está disponible al abrir el archivo directamente');
-    return toast('Esta copia se abrió como archivo. Para generar un archivo personalizado usa build.js');
-  }
-  const url=enlaceCompartir();
-  const copiarFallback=()=>{try{window.prompt('Copia tu enlace para compartir:',url)}catch(e){console.warn('[rama] no se pudo mostrar el enlace',e)}};
-  try{
-    if(navigator.share){navigator.share({title:'Ármame un ramo',text:'Abre este enlace y crea tu propio ramo 🌸',url}).catch(err=>{if(err&&err.name!=='AbortError'){console.warn('[rama] no se pudo compartir',err);copiarFallback()}});return}
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(url).then(()=>toast('Enlace copiado. Compártelo para que te armen un ramo')).catch(err=>{console.warn('[rama] no se pudo copiar el enlace',err);copiarFallback()});
-      return;
-    }
-    copiarFallback();
-  }catch(err){console.warn('[rama] error al compartir',err);copiarFallback()}
-}
-
-
 /* ================== dibujo ================== */
 const headSc=it=>FB[it.k].base/FB[it.k].w*it.s;
 const headTf=it=>`translate(${f1(it.x)} ${f1(it.y)}) rotate(${f1(it.r)}) scale(${headSc(it).toFixed(3)})`;
@@ -426,7 +404,7 @@ function updateTools(){
     if(a==='undo'){b.disabled=!hist.length;return}
     if(a==='redo'){b.disabled=!future.length;return}
     if(a==='clr'){b.disabled=!S.items.length;return}
-    if(a==='layers'||a==='share'){b.disabled=false;return}
+    if(a==='layers'){b.disabled=false;return}
     b.disabled=!it||(fill&&['rl','rr','sm','lg','col'].includes(a));
   });
   $('hint').textContent=it?`Seleccionada: ${nameOf(it)}. Arrástrala para moverla${fill?'':', o usa los tiradores para girarla y cambiar su tamaño'}.`:S.items.length?'Toca una flor del ramo para seleccionarla y moverla.':'';
@@ -506,7 +484,6 @@ document.querySelector('.tools').addEventListener('click',e=>{
   if(a==='redo')return redo();
   if(a==='clr'){push();S.items=[];S.sel=null;return refresh()}
   if(a==='layers'){const w=$('layersWrap');w.hidden=!w.hidden;if(!w.hidden)renderLayers();return}
-  if(a==='share')return compartir();
   if(!it)return;
   push();
   if(a==='rl')it.r-=15;
@@ -756,10 +733,9 @@ buildPalette();
 S.items=[];S.paper='rosa';S.ribbon='negro';
 hist=[];future=[];
 loadSaved();
-if(location.protocol==='file:'){const sb=document.querySelector('.tools [data-act="share"]');if(sb)sb.hidden=true}
 syncWrapUI();refresh();
 window.__ramaImagen=ramoImagen;
-window.__ramaAPI={exportar:exportarRamo,importar:importarRamo};
+window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompartir};
 })();
 </script>
 
@@ -1097,6 +1073,20 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo};
     if (/^#[0-9a-fA-F]{6}$/.test(guardadoColor || "")) cardColor = guardadoColor;
   } catch (e) { logErr("no se pudo leer el color de la tarjeta", e); }
 
+  var PALETA_TEXTO = [
+    ["#2b2326", "Negro"],
+    ["#fff7fb", "Blanco"],
+    ["#b5214f", "Rosa"],
+    ["#6538b0", "Morado"],
+    ["#8a5a2b", "Marrón"]
+  ];
+  var KEY_FONT = "dedicatoria-font-color";
+  var fontColor = "";
+  try {
+    var guardadoFont = localStorage.getItem(KEY_FONT);
+    if (/^#[0-9a-fA-F]{6}$/.test(guardadoFont || "")) fontColor = guardadoFont.toLowerCase();
+  } catch (e) { logErr("no se pudo leer el color del texto", e); }
+
   function esColorOscuro(hex) {
     var h = String(hex).replace("#", "");
     if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
@@ -1138,17 +1128,71 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo};
   selectorColor.appendChild(etiquetaOtro);
   card.parentNode.insertBefore(selectorColor, card);
 
-  function aplicarColor(c) {
-    if (!/^#[0-9a-fA-F]{6}$/.test(c)) return;
-    cardColor = c.toLowerCase();
+  var selectorTexto = document.createElement("div");
+  selectorTexto.className = "color-pick";
+  var etiquetaTexto = document.createElement("span");
+  etiquetaTexto.className = "color-label"; etiquetaTexto.id = "font-color-label";
+  etiquetaTexto.textContent = "Color del texto";
+  var muestrasTexto = document.createElement("div");
+  muestrasTexto.className = "swatches"; muestrasTexto.id = "font-swatches";
+  muestrasTexto.setAttribute("role", "group");
+  muestrasTexto.setAttribute("aria-labelledby", "font-color-label");
+  var botonesTexto = [];
+  var botonAuto = document.createElement("button");
+  botonAuto.type = "button"; botonAuto.className = "swatch auto";
+  botonAuto.title = "Automático"; botonAuto.setAttribute("aria-label", "Color automático");
+  botonAuto.setAttribute("data-color", "");
+  botonAuto.textContent = "A";
+  botonAuto.addEventListener("click", function () { aplicarFontColor(""); });
+  muestrasTexto.appendChild(botonAuto); botonesTexto.push(botonAuto);
+  PALETA_TEXTO.forEach(function (par) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "swatch"; b.title = par[1];
+    b.setAttribute("aria-label", par[1]);
+    b.setAttribute("data-color", par[0]);
+    b.style.setProperty("--sw", par[0]);
+    b.addEventListener("click", function () { aplicarFontColor(par[0]); });
+    muestrasTexto.appendChild(b); botonesTexto.push(b);
+  });
+  var etiquetaOtroTexto = document.createElement("label");
+  etiquetaOtroTexto.className = "color-custom"; etiquetaOtroTexto.title = "Elegir otro color";
+  var inputFont = document.createElement("input");
+  inputFont.type = "color"; inputFont.id = "font-color-input";
+  inputFont.setAttribute("aria-label", "Otro color de texto");
+  var textoOtroTexto = document.createElement("span"); textoOtroTexto.textContent = "Otro";
+  etiquetaOtroTexto.appendChild(inputFont); etiquetaOtroTexto.appendChild(textoOtroTexto);
+  inputFont.addEventListener("input", function () { aplicarFontColor(inputFont.value); });
+  selectorTexto.appendChild(etiquetaTexto);
+  selectorTexto.appendChild(muestrasTexto);
+  selectorTexto.appendChild(etiquetaOtroTexto);
+  card.parentNode.insertBefore(selectorTexto, card);
+
+  function tintaAuto() {
+    return esColorOscuro(cardColor) ? "#fff7fb" : "#2b2326";
+  }
+
+  function actualizarTintas() {
     var oscuro = esColorOscuro(cardColor);
-    card.style.background = cardColor;
-    card.style.setProperty("--card-ink", oscuro ? "#fff7fb" : "#2b2326");
+    card.style.setProperty("--card-ink", fontColor || tintaAuto());
     card.style.setProperty("--card-muted", oscuro ? "#e7c9d8" : "#8a737a");
     card.style.setProperty("--card-soft", oscuro ? "#cbb8db" : "#b9a6ab");
     card.style.setProperty("--card-icon", oscuro ? "#f4ecf7" : "#333");
     card.style.setProperty("--card-dot", oscuro ? "#ff8ec1" : "#1a73c4");
     card.style.setProperty("--card-dot-off", oscuro ? "#7d6a8a" : "#d6d6d6");
+  }
+
+  function actualizarBotonesTexto() {
+    botonesTexto.forEach(function (b) {
+      b.setAttribute("aria-pressed", String((b.getAttribute("data-color") || "").toLowerCase() === fontColor));
+    });
+  }
+
+  function aplicarColor(c) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(c)) return;
+    cardColor = c.toLowerCase();
+    card.style.background = cardColor;
+    actualizarTintas();
+    inputFont.value = fontColor || tintaAuto();
     botonesColor.forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.getAttribute("data-color").toLowerCase() === cardColor));
     });
@@ -1157,7 +1201,22 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo};
     hideResult();
   }
 
+  function aplicarFontColor(c) {
+    var v = String(c || "").toLowerCase();
+    if (v && !/^#[0-9a-fA-F]{6}$/.test(v)) return;
+    fontColor = v;
+    actualizarTintas();
+    actualizarBotonesTexto();
+    inputFont.value = fontColor || tintaAuto();
+    try {
+      if (fontColor) localStorage.setItem(KEY_FONT, fontColor);
+      else localStorage.removeItem(KEY_FONT);
+    } catch (e) { logErr("no se pudo guardar el color del texto", e); }
+    hideResult();
+  }
+
   aplicarColor(cardColor);
+  aplicarFontColor(fontColor);
 
   function getRamo() {
     if (window.__ramoData) return window.__ramoData; try { return localStorage.getItem(KEY_RAMO); } catch (e) { return null; }
@@ -1380,7 +1439,7 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo};
       canvas.width = W; canvas.height = H + HD;
       var ctx = canvas.getContext("2d");
       var oscuro = esColorOscuro(cardColor);
-      var tinta = oscuro ? "#fff7fb" : "#2b2326";
+      var tinta = fontColor || (oscuro ? "#fff7fb" : "#2b2326");
       var tintaSuave = oscuro ? "#e7c9d8" : "#8a737a";
       var tintaIcono = oscuro ? "#f4ecf7" : "#333";
       var tintaPunto = oscuro ? "#7d6a8a" : "#d6d6d6";
@@ -1595,6 +1654,46 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo};
       nota.textContent = 'Este navegador no deja compartir imágenes desde aquí. Toca "Guardar imagen" y envíala por tu app de mensajes.';
     }).catch(function (e) { logErr("no se pudo preparar la imagen para compartir", e); });
   });
+
+  var linkBtn = document.createElement("button");
+  linkBtn.type = "button"; linkBtn.className = "btn sec"; linkBtn.textContent = "Compartir enlace";
+  acts.insertBefore(linkBtn, sr.getElementById("guardar"));
+  linkBtn.addEventListener("click", function () {
+    if (location.protocol === "file:") {
+      nota.textContent = "Abre la página desde GitHub Pages para compartir el enlace.";
+      return;
+    }
+    var url;
+    try { url = window.__ramaAPI && window.__ramaAPI.enlace ? window.__ramaAPI.enlace() : ""; }
+    catch (e) { logErr("no se pudo generar el enlace", e); }
+    if (!url) { nota.textContent = "No se pudo generar el enlace. Inténtalo de nuevo."; return; }
+    var copiarFallback = function () {
+      try { window.prompt("Copia el enlace para enviar tu ramo:", url); }
+      catch (e) { nota.textContent = url; }
+    };
+    var copiar = function () {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url)
+          .then(function () { nota.textContent = "Enlace copiado. Envíalo para que vean tu ramo."; })
+          .catch(function (e) { logErr("no se pudo copiar el enlace", e); copiarFallback(); });
+      } else { copiarFallback(); }
+    };
+    try {
+      if (navigator.share) {
+        navigator.share({
+          title: "¡Recibiste un ramo!",
+          text: "Abre este enlace para ver el ramo que te envié 🌸",
+          url: url
+        }).catch(function (e) {
+          if (e && e.name === "AbortError") return;
+          logErr("no se pudo compartir el enlace", e);
+          copiar();
+        });
+        return;
+      }
+      copiar();
+    } catch (e) { logErr("error al compartir el enlace", e); copiarFallback(); }
+  });
 }, rec: function (sr, api) {
   var em = ["🌸","🌷","🌼","💮","🌹","🌺"], box = sr.getElementById("petals");
   for (var i = 0; i < 14; i++) {
@@ -1739,6 +1838,13 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo};
   var p = document.getElementById("amorPopup");
   var b = document.getElementById("amorPopupBtn");
   if (!p || !b) return;
+  var compartido = false;
+  try {
+    var qs = new URLSearchParams(location.search);
+    var hs = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+    compartido = !!(qs.get("d") || qs.get("c") || hs.get("d") || hs.get("c") || window.__DISENO_INICIAL);
+  } catch (e) {}
+  if (!compartido) p.hidden = false;
   function cerrar(){ p.hidden = true; }
   b.addEventListener("click", cerrar);
   p.addEventListener("click", function(e){ if (e.target === p) cerrar(); });
