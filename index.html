@@ -15,7 +15,7 @@
 </script>
 
 
-<div class="fondo-botanico" aria-hidden="true"></div><div class="fondo-botanico abajo" aria-hidden="true"></div>
+<div class="fondo-botanico" aria-hidden="true"></div>
 <div class="amor-popup" id="amorPopup" role="dialog" aria-modal="true" aria-labelledby="amorPopupTxt" hidden>
   <div class="amor-card">
     <p id="amorPopupTxt">disfruta amor &lt;3!!!</p>
@@ -788,44 +788,6 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
     { x: 380, y: 196, r: 80, s: 0.60, o: 0.75 }
   ];
   var ROSA = { x: 360, y: 268, r: -12, s: 1.15 };
-
-  function svg(u) {
-    var id = function (n) { return u + "-" + n; };
-    var o = '<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">';
-    o += '<defs>';
-    o += '<radialGradient id="' + id("gp") + '" cx="50%" cy="35%" r="65%"><stop offset="0%" stop-color="#fff1f8"/><stop offset="45%" stop-color="#ffb8dc"/><stop offset="100%" stop-color="#f04f9e"/></radialGradient>';
-    o += '<path id="' + id("ps") + '" d="M0 0C-6 -5 -11 -15 0 -20C11 -15 6 -5 0 0Z" fill="url(#' + id("gp") + ')"/>';
-    o += '<linearGradient id="' + id("gh") + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#ffc0e2"/><stop offset="100%" stop-color="#d83f88"/></linearGradient>';
-    o += '<linearGradient id="' + id("gt") + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff9ccd"/><stop offset="100%" stop-color="#a62668"/></linearGradient>';
-    o += '<radialGradient id="' + id("gr") + '" cx="42%" cy="35%" r="65%"><stop offset="0%" stop-color="#ffe0ef"/><stop offset="45%" stop-color="#ff8dc5"/><stop offset="100%" stop-color="#c92674"/></radialGradient>';
-    o += '<path id="' + id("ho") + '" d="M0 0C10 -8 26 -7 34 0C26 7 10 8 0 0Z" fill="url(#' + id("gh") + ')"/>';
-    o += '<path id="' + id("pe") + '" d="M0 0C8 -12 22 -14 28 -4C22 8 8 10 0 0Z" fill="url(#' + id("gp") + ')"/>';
-    var sak = '<g id="' + id("sa") + '">';
-    for (var k = 0; k < 5; k++) sak += '<use href="#' + id("ps") + '"' + (k ? ' transform="rotate(' + (k * 72) + ')"' : '') + '/>';
-    sak += '<circle r="3.4" fill="#fff3fa"/><circle r="1.8" fill="#ffd05e"/></g>';
-    o += sak;
-    var rosa = '<g id="' + id("ro") + '">';
-    var petaloRosa = "M0 0C-2 -10 4 -24 16 -30C30 -37 44 -28 43 -15C42 -3 26 4 0 0Z";
-    var capas = [[1, 0, 7], [0.76, 26, 6], [0.54, 52, 5], [0.36, 14, 4]];
-    for (var c = 0; c < capas.length; c++) {
-      var esc = capas[c][0], giro = capas[c][1], num = capas[c][2];
-      rosa += '<g fill="url(#' + id("gr") + ')" stroke="#a31960" stroke-width="' + (1.1 / esc) + '" transform="rotate(' + giro + ') scale(' + esc + ')">';
-      for (var p = 0; p < num; p++) rosa += '<path d="' + petaloRosa + '"' + (p ? ' transform="rotate(' + (p * 360 / num) + ')"' : '') + '/>';
-      rosa += '</g>';
-    }
-    rosa += '<circle r="10" fill="#ffd5e8" stroke="#a31960" stroke-width="1.4"/>';
-    rosa += '<path d="M0 0C3 -4 8 -3 9 1C10 6 4 9 0 7C-6 4 -7 -4 -2 -8C3 -12 10 -8 11 -2C12 5 6 10 0 10" fill="none" stroke="#a31960" stroke-width="2" stroke-linecap="round"/></g>';
-    o += rosa;
-    o += '</defs>';
-    RAMAS.forEach(function (r) { o += '<path d="' + r.d + '" fill="none" stroke="url(#' + id("gt") + ')" stroke-width="' + r.w + '" stroke-linecap="round"/>'; });
-    HOJAS.forEach(function (h) { o += '<use href="#' + id("ho") + '" transform="translate(' + h.x + ' ' + h.y + ') rotate(' + h.r + ') scale(' + h.s + ')"/>'; });
-    FLORES.forEach(function (f) { o += '<use href="#' + id("sa") + '" transform="translate(' + f.x + ' ' + f.y + ') rotate(' + f.r + ') scale(' + f.s + ')"/>'; });
-    o += '<use href="#' + id("ro") + '" transform="translate(' + ROSA.x + ' ' + ROSA.y + ') rotate(' + ROSA.r + ') scale(' + ROSA.s + ')"/>';
-    PETALOS.forEach(function (p) { o += '<use href="#' + id("pe") + '" opacity="' + p.o + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + p.r + ') scale(' + p.s + ')"/>'; });
-    return o + '</svg>';
-  }
-  var els = document.querySelectorAll(".fondo-botanico");
-  for (var i = 0; i < els.length; i++) els[i].innerHTML = svg("fb" + i);
 
   var PATH_HOJA = new Path2D("M0 0C10 -8 26 -7 34 0C26 7 10 8 0 0Z");
   var PATH_PETALO = new Path2D("M0 0C8 -12 22 -14 28 -4C22 8 8 10 0 0Z");

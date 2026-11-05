@@ -43,7 +43,15 @@ if (!design && urlArg) {
 
 let html = read("index.html");
 
-const mainCss = read("css/estilos.css");
+let mainCss = read("css/estilos.css");
+mainCss = mainCss.replace(/url\("\.\.\/assets\/([^"]+)"\)/g, function (m, file) {
+  const imgPath = path.join(root, "assets", file);
+  if (!fs.existsSync(imgPath)) {
+    console.error("No se encontro assets/" + file);
+    process.exit(1);
+  }
+  return 'url("data:image/webp;base64,' + fs.readFileSync(imgPath).toString("base64") + '")';
+});
 const mainLink = '<link rel="stylesheet" href="css/estilos.css">';
 if (!html.includes(mainLink)) {
   console.error("No se encontro el <link> de estilos en index.html");
