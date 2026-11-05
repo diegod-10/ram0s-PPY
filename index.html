@@ -26,6 +26,45 @@
   <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
   <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
 </button>
+<style id="movil">
+@media (max-width:700px){
+  html:has(#v-ramo:not([hidden])), body:has(#v-ramo:not([hidden])){height:100dvh;overflow:hidden}
+  body:has(#v-ramo:not([hidden])){padding:0}
+  #v-ramo:not([hidden]){height:100dvh}
+  #v-ramo #root{height:100%;display:flex;flex-direction:column;max-width:none}
+  #v-ramo header{margin:0;padding:10px 64px 6px 14px;gap:0;flex:0 0 auto}
+  #v-ramo h1{font-size:1.25rem}
+  #v-ramo header p{display:none}
+  #v-ramo .app{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:stretch;gap:0;position:relative}
+  #v-ramo .stagecol,#v-ramo .stage,#v-ramo .tools{display:contents}
+  #v-ramo .stage-sum,#v-ramo .hint,#v-ramo .layers{display:none}
+  #v-ramo .stage-box{order:1;flex:1 1 0;min-height:0;max-width:none;width:auto;margin:0 10px;display:flex;align-items:center;justify-content:center;position:relative;
+    background:linear-gradient(115deg,transparent 14%,rgba(255,255,255,.2) 30%,transparent 46%),linear-gradient(160deg,color-mix(in srgb,var(--pmain,#bcd2ee) 42%,var(--stage2)),color-mix(in srgb,var(--pmain,#bcd2ee) 24%,var(--stage)));
+    border:1px solid var(--line);border-radius:20px}
+  #v-ramo #bq{height:100%;width:auto;max-width:100%;touch-action:none}
+  #v-ramo .tools>.trow:nth-child(4){order:2;flex-wrap:nowrap;overflow-x:auto;justify-content:center;padding:6px 10px 0;scrollbar-width:none}
+  #v-ramo .app.has-sel ~ .pie{display:none}
+  #v-ramo .tools>.trow:nth-child(2),#v-ramo .tools>.trow:nth-child(3){display:none;position:absolute;left:50%;transform:translateX(-50%);z-index:20;
+    width:max-content;max-width:calc(100% - 20px);flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:5px 8px;border-radius:30px;scrollbar-width:none;
+    background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line);box-shadow:0 6px 18px -8px rgba(0,0,0,.35)}
+  #v-ramo .tools>.trow:nth-child(2){top:8px}
+  #v-ramo .tools>.trow:nth-child(3){top:48px}
+  #v-ramo .tools>.trow:nth-child(2) .tb,#v-ramo .tools>.trow:nth-child(3) .tb{padding:4px 10px;font-size:.78rem}
+  #v-ramo .app.has-sel .tools>.trow:nth-child(2),#v-ramo .app.has-sel .tools>.trow:nth-child(3){display:flex}
+  #v-ramo .palette{order:3;flex:0 0 auto;max-height:36dvh;overflow-y:auto;margin:8px 0 0;border-radius:20px 20px 0 0;border-bottom:0;padding:8px 12px 4px}
+  #v-ramo .tabs{margin-bottom:6px}
+  #v-ramo .pal-note{display:none}
+  #v-ramo .pal{scroll-snap-type:x proximity;gap:8px}
+  #v-ramo .ptile{flex:0 0 104px;scroll-snap-align:start;padding-bottom:8px;gap:6px}
+  #v-ramo .pick small{display:none}
+  #v-ramo .pick b{font-size:1rem}
+  #v-ramo .dots button{width:20px;height:20px}
+  #v-ramo .insp{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #v-ramo .next{order:4;align-self:stretch;margin:0;border-radius:0;padding:14px 18px calc(14px + env(safe-area-inset-bottom,0px));font-size:1rem;background:var(--accent);border-color:var(--accent)}
+  #v-ramo .pie{position:fixed;top:46px;right:18px;margin:0;padding:0;z-index:16}
+  #v-ramo .pie .ver-mensaje{padding:4px 10px;font-size:.78rem}
+}
+</style>
 <div id="v-ramo">
 <div class="wrap" id="root">
   <header>
@@ -1913,6 +1952,15 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
   if (mq && mq.addEventListener) mq.addEventListener("change", function(e){
     if (!guardado) aplicar(e.matches ? "dark" : "light");
   });
+})();
+</script>
+
+<script>
+(function(){var s=document.getElementById("sel"),a=document.querySelector("#v-ramo .app");if(!s||!a||!window.MutationObserver)return;
+function f(){a.classList.toggle("has-sel",s.childNodes.length>0)}
+new MutationObserver(f).observe(s,{childList:true});f();
+var box=document.querySelector("#v-ramo .stage-box"),q=document.getElementById("bq");
+if(box&&q)box.addEventListener("pointerdown",function(e){if(e.target===box)q.dispatchEvent(new PointerEvent("pointerdown",{bubbles:true,pointerId:e.pointerId,clientX:-1,clientY:-1}))});
 })();
 </script>
 
