@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title> Floristeria ppT</title>
+<title> Flores PPY</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Figtree:wght@400;500;600;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
@@ -243,7 +243,21 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const esc=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const b64e=str=>{const b=new TextEncoder().encode(str);let bin='';b.forEach(x=>bin+=String.fromCharCode(x));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
 const b64d=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');const bin=atob(s);return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)))};
+const b64u=b=>{let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const ub64u=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const bin=atob(s);return Uint8Array.from(bin,c=>c.charCodeAt(0))};
+async function comprimirTexto(str){
+  if(typeof CompressionStream!=='function')return null;
+  const stream=new Blob([str]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function descomprimirTexto(bytes){
+  if(typeof DecompressionStream!=='function')throw new Error('DecompressionStream no disponible');
+  const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+}
+async function descomprimirEnlace(z){return descomprimirTexto(ub64u(z))}
 window.__b64={e:b64e,d:b64d};
+window.__ramaZ={d:descomprimirEnlace};
 const icon=(f,ci)=>`<img src="${f.img[ci]}" alt="">`;
 const fillIcon=k=>`<svg viewBox="-40 -40 80 80" aria-hidden="true">${sprig(k,[-12,38],[14,-34],.22,mulberry(3))}</svg>`;
 const get=u=>S.items.find(i=>i.u===u);
@@ -335,8 +349,18 @@ function importarRamo(o,opts){
   suppressPersist=false;
   return true;
 }
-function enlaceCompartir(){
-  return location.origin+location.pathname+'?d='+b64e(JSON.stringify(exportarRamo()));
+async function enlaceCompartir(){
+  const json=JSON.stringify(exportarRamo());
+  const base=location.origin+location.pathname;
+  const viejo=base+'?d='+b64e(json);
+  try{
+    const comprimido=await comprimirTexto(json);
+    if(comprimido){
+      const nuevo=base+'?z='+b64u(comprimido);
+      if(nuevo.length<viejo.length)return nuevo;
+    }
+  }catch(e){console.warn('[rama] no se pudo comprimir el enlace; se usa el formato anterior',e)}
+  return viejo;
 }
 /* ================== dibujo ================== */
 const headSc=it=>FB[it.k].base/FB[it.k].w*it.s;
@@ -690,7 +714,8 @@ let tt;
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2400)}
 
 const DEDIC_URL='dedicatoria.html';
-function ramoImagen(done){
+function ramoImagen(done,opts){
+  const sinFondo=!!(opts&&opts.sinFondo);
   const p=PAPERS.find(x=>x.id===S.paper),r=RIBBONS.find(x=>x.id===S.ribbon);
   const clone=svg.cloneNode(true);
   clone.querySelector('#sel').innerHTML='';
@@ -705,11 +730,14 @@ function ramoImagen(done){
   img.onload=()=>{
     try{
       const W=660,H=726,c=document.createElement('canvas');c.width=W;c.height=H;
-      const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,W,H);
-      gr.addColorStop(0,mix(p.main,.45));gr.addColorStop(1,mix(p.main,.8));
-      g.fillStyle=gr;g.fillRect(0,0,W,H);
+      const g=c.getContext('2d');
+      if(!sinFondo){
+        const gr=g.createLinearGradient(0,0,W,H);
+        gr.addColorStop(0,mix(p.main,.45));gr.addColorStop(1,mix(p.main,.8));
+        g.fillStyle=gr;g.fillRect(0,0,W,H);
+      }
       g.drawImage(img,(W-H*.8)/2,0,H*.8,H);
-      done(c.toDataURL('image/jpeg',.9));
+      done(c.toDataURL(sinFondo?'image/png':'image/jpeg',.9));
     }catch(err){console.error('[rama] no se pudo generar la imagen del ramo',err);done(null)}
   };
   img.onerror=()=>done(null);
@@ -868,10 +896,126 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
 </script>
 <script>
 (function(){
-  var API = { codigo: null, diseno: null };
+  var API = { codigo: null, diseno: null, disenoObj: null };
   function logErr(m,e){try{console.error('[rama] '+m,e||'')}catch(_){}}
   var IDS = { ramo: "v-ramo", ded: "v-ded", gua: "v-gua", rec: "v-rec" };
   var CSS = {"ded": "dedicatoria", "gua": "guardar", "rec": "recibido"}, HTML = {"ded": "<div class=\"wrap\">\n  <div class=\"topbar\">\n    <a href=\"#\" data-ir=\"ramo\">\u2190 Volver a armar el ramo</a>\n    \n  </div>\n\n  <h1>Escribe tu dedicatoria</h1>\n\n  <div class=\"layout\">\n    <form id=\"form\" autocomplete=\"off\" novalidate>\n      <div class=\"field\">\n        <div class=\"row\">\n          <label for=\"para\">Para</label>\n          <span class=\"count\" id=\"count-para\" aria-hidden=\"true\">0 / 40</span>\n        </div>\n        <input type=\"text\" id=\"para\" maxlength=\"40\" placeholder=\"Nombre de quien lo recibe\">\n      </div>\n\n      <div class=\"field\">\n        <div class=\"row\">\n          <label for=\"de\">De parte de</label>\n          <span class=\"count\" id=\"count-de\" aria-hidden=\"true\">0 / 40</span>\n        </div>\n        <input type=\"text\" id=\"de\" maxlength=\"40\" placeholder=\"Tu nombre\">\n      </div>\n\n      <div>\n        <span class=\"ideas-title\" id=\"ideas-label\">Ideas r\u00e1pidas</span>\n        <div class=\"chips\" role=\"group\" aria-labelledby=\"ideas-label\" id=\"chips\"></div>\n        <p class=\"hint\">Toca una idea para rellenar el mensaje. Despu\u00e9s puedes editarlo como quieras.</p>\n      </div>\n\n      <div class=\"field\">\n        <div class=\"row\">\n          <label for=\"msg\">Mensaje</label>\n          <span class=\"count\" id=\"count-msg\" aria-live=\"polite\">0 / 280</span>\n        </div>\n        <textarea id=\"msg\" maxlength=\"280\" placeholder=\"Escribe aqu\u00ed lo que quieres decirle\u2026\"></textarea>\n      </div>\n\n      <div class=\"actions\">\n        <button type=\"button\" class=\"btn-primary\" id=\"crear\">Crear imagen</button>\n        <button type=\"button\" class=\"btn-clear\" id=\"clear\">Borrar todo</button>\n      </div>\n      <p class=\"estado\" id=\"estado\" role=\"status\" aria-live=\"polite\"></p>\n    </form>\n\n    <section class=\"preview-col\" aria-labelledby=\"preview-h\">\n      <h2 class=\"preview-title\" id=\"preview-h\">Vista previa de tu tarjeta</h2>\n\n      <article class=\"post\" id=\"card\" aria-live=\"polite\">\n        <div class=\"post-head\">\n          <div class=\"avatar\" aria-hidden=\"true\">\ud83c\udf37</div>\n          <div class=\"who\">Una dedicatoria<small>con mucho cari\u00f1o</small></div>\n          <div class=\"dots\" aria-hidden=\"true\"><i></i><i></i><i></i></div>\n        </div>\n\n        <div class=\"photo\" id=\"photo\" aria-label=\"Tu ramo de flores\"></div>\n\n        <div class=\"bar\" aria-hidden=\"true\">\n          <svg viewBox=\"0 0 32 32\"><path fill=\"#ff0000\" d=\"M16 29C6 21.5 2.5 16.8 2.5 11.2 2.5 7 5.7 4 9.6 4c2.6 0 4.9 1.4 6.4 3.6C17.500 5.400 19.800 4 22.400 4c3.900 0 7.100 3 7.100 7.200 0 5.600-3.500 10.300-13.500 17.800z\"/></svg>\n          <svg viewBox=\"0 0 32 32\" fill=\"none\" stroke=\"#333\" stroke-width=\"2.2\" stroke-linejoin=\"round\"><path d=\"M16 4C9 4 4 8.600 4 14.500c0 3.200 1.500 6 3.900 7.900L6.800 28l5.700-2.600c1.100.3 2.200.4 3.500.4 7 0 12-4.600 12-10.500S23 4 16 4z\"/></svg>\n          <svg viewBox=\"0 0 32 32\" fill=\"none\" stroke=\"#333\" stroke-width=\"2.2\" stroke-linejoin=\"round\"><path d=\"M3 11.500 29 4 21.500 29l-6-9.500L3 11.500zM29 4 15.500 19.500\"/></svg>\n          <div class=\"pager\"><i></i><i class=\"on\"></i><i></i></div>\n          <span class=\"spacer\"></span>\n          <svg viewBox=\"0 0 32 32\" fill=\"none\" stroke=\"#333\" stroke-width=\"2.2\" stroke-linejoin=\"round\"><path d=\"M7 4h18v24l-9-7-9 7V4z\"/></svg>\n        </div>\n\n        <div class=\"caption\">\n          <p class=\"line\"><b>Para:</b> <span class=\"val\" id=\"out-to\"></span></p>\n          <p class=\"line\"><b>De:</b> <span class=\"val\" id=\"out-from\"></span></p>\n          <p class=\"msg-label\">Mensaje</p>\n          <p class=\"msg\" id=\"out-msg\"></p>\n        </div>\n      </article>\n    </section>\n  </div>\n\n  <section class=\"resultado\" id=\"resultado\" hidden aria-labelledby=\"res-h\">\n    <h2 id=\"res-h\">Tu dedicatoria est\u00e1 lista</h2>\n    <img id=\"res-img\" alt=\"Imagen de tu tarjeta con la dedicatoria\">\n    <div class=\"res-actions\">\n      <a class=\"btn-primary\" id=\"res-descarga\" href=\"#\" download=\"dedicatoria.png\" hidden>Descargar imagen</a>\n      <button type=\"button\" class=\"btn-sec\" id=\"res-share\" hidden>Compartir</button>\n    </div>\n    <p class=\"hint\" id=\"res-nota\"></p>\n    <p class=\"hint\"><strong>Para guardarla:</strong> mant\u00e9n presionada la imagen (o haz clic derecho) y elige \"Guardar imagen\".</p>\n  </section>\n</div>", "gua": "<main class=\"wrap\">\n  <section id=\"ok\" hidden>\n    <div style=\"display:grid;gap:16px\">\n      <h1>Tu dedicatoria est\u00e1 lista</h1>\n      <img id=\"img\" alt=\"Imagen de tu tarjeta con la dedicatoria\">\n      <div class=\"actions\">\n        <button type=\"button\" class=\"btn primary\" id=\"guardar\">Guardar imagen</button>\n        \n      </div>\n      <p id=\"nota\"></p>\n      <a class=\"back\" href=\"#\" data-ir=\"ded\">\u2190 Editar la dedicatoria</a>\n    </div>\n  </section>\n  <section id=\"vacio\" style=\"display:none\">\n    <div style=\"display:grid;gap:16px\">\n      <h1>A\u00fan no hay imagen</h1>\n      <p>Primero escribe tu dedicatoria y pulsa \"Crear imagen\".</p>\n      <div class=\"actions\"><a class=\"btn primary\" href=\"#\" data-ir=\"ded\">Ir a la dedicatoria</a></div>\n    </div>\n  </section>\n</main>", "rec": "<div id=\"petals\" aria-hidden=\"true\"></div>\n<main class=\"wrap\">\n  <h1>\u00a1RECIBISTE UN RAMO!!!</h1>\n  <p class=\"sub\" id=\"sub\">Alguien especial pens\u00f3 en ti \ud83d\udc90</p>\n  <div id=\"cont\"></div>\n  <div class=\"actions\" id=\"acc\" hidden>\n    <button type=\"button\" class=\"btn primary\" id=\"guardar\">Guardar imagen</button>\n    <a class=\"btn sec\" href=\"#\" data-ir=\"ramo\">Crear mi propio ramo</a>\n  </div>\n  <p class=\"msg\" id=\"msg\">Cargando tu ramo\u2026</p>\n</main>"};
+  function dibujarCorazon(ctx, x, y, s, color) {
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(s, s);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, 5);
+    ctx.bezierCurveTo(-9, -4, -16, 3, -8, 11);
+    ctx.bezierCurveTo(-4, 15, 0, 18, 0, 18);
+    ctx.bezierCurveTo(0, 18, 4, 15, 8, 11);
+    ctx.bezierCurveTo(16, 3, 9, -4, 0, 5);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function dibujarConejito(ctx, x, y, s, rot, c, beso) {
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = c.line;
+
+    function oreja(signo) {
+      ctx.save();
+      ctx.translate(signo * 20, -30);
+      ctx.rotate(signo * 0.22);
+      var g = ctx.createLinearGradient(0, -64, 0, 10);
+      g.addColorStop(0, c.fur2); g.addColorStop(1, c.fur);
+      ctx.fillStyle = g; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(0, -26, 14, 38, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = c.inner;
+      ctx.beginPath(); ctx.ellipse(0, -26, 7.5, 28, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    oreja(-1); oreja(1);
+
+    var bg = ctx.createLinearGradient(0, 20, 0, 100);
+    bg.addColorStop(0, c.fur2); bg.addColorStop(1, c.fur);
+    ctx.fillStyle = bg; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(0, 52, 34, 42, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = c.belly;
+    ctx.beginPath(); ctx.ellipse(0, 58, 20, 27, 0, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = c.fur2; ctx.lineWidth = 3;
+    [[-18, 92], [18, 92]].forEach(function (f) {
+      ctx.beginPath(); ctx.ellipse(f[0], f[1], 16, 10, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    });
+
+    ctx.fillStyle = c.fur; ctx.lineWidth = 2.6;
+    [[-1, -0.55], [1, 0.55]].forEach(function (a) {
+      ctx.save(); ctx.translate(a[0] * 34, 42); ctx.rotate(a[1]);
+      ctx.beginPath(); ctx.ellipse(0, 0, 18, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    });
+
+    var hg = ctx.createRadialGradient(-12, -22, 4, 0, -8, 48);
+    hg.addColorStop(0, c.fur2); hg.addColorStop(1, c.fur);
+    ctx.fillStyle = hg; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(0, -8, 40, 38, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = c.blush; ctx.globalAlpha = 0.55;
+    [[-25, 2], [25, 2]].forEach(function (b) {
+      ctx.beginPath(); ctx.ellipse(b[0], b[1], 8, 5, 0, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    if (beso) {
+      ctx.strokeStyle = c.eye; ctx.lineWidth = 2.6; ctx.lineCap = "round";
+      [[-15, -15], [15, -15]].forEach(function (o) {
+        ctx.beginPath(); ctx.arc(o[0], o[1] + 2, 5, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
+      });
+      ctx.fillStyle = "#d96a8f";
+      ctx.beginPath(); ctx.ellipse(30, 2, 4.8, 3.6, 0.15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(120, 45, 70, .45)";
+      ctx.beginPath(); ctx.ellipse(31.5, 3, 2, 1.4, 0.15, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = c.eye;
+      [[-15, -14], [15, -14]].forEach(function (o) {
+        ctx.beginPath(); ctx.ellipse(o[0], o[1], 3.6, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.fillStyle = "#ffffff";
+      [[-16.2, -16], [13.8, -16]].forEach(function (o) {
+        ctx.beginPath(); ctx.arc(o[0], o[1], 1.4, 0, Math.PI * 2); ctx.fill();
+      });
+
+      ctx.fillStyle = "#d96a8f";
+      ctx.beginPath();
+      ctx.moveTo(0, -2);
+      ctx.bezierCurveTo(-3, -5, -6, -3, -3, 0);
+      ctx.bezierCurveTo(-1, 2, 1, 2, 3, 0);
+      ctx.bezierCurveTo(6, -3, 3, -5, 0, -2);
+      ctx.closePath(); ctx.fill();
+
+      ctx.strokeStyle = c.line; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(0, 1); ctx.bezierCurveTo(-2, 5, -7, 5, -8, 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 1); ctx.bezierCurveTo(2, 5, 7, 5, 8, 1); ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function dibujarConejitos(ctx, cx, baseY, s) {
+    var oy = baseY - 106 * s;
+
+    dibujarCorazon(ctx, cx - 8 * s, oy - 98 * s, 0.85 * s, "#ff6fa5");
+    dibujarCorazon(ctx, cx + 26 * s, oy - 112 * s, 0.65 * s, "#ff3d7f");
+    dibujarCorazon(ctx, cx + 52 * s, oy - 86 * s, 0.5 * s, "#ff9cc4");
+    dibujarCorazon(ctx, cx - 42 * s, oy - 78 * s, 0.45 * s, "#ff9cc4");
+
+    var marron = { fur: "#c99a7a", fur2: "#e7c5aa", belly: "#f7e2cf", inner: "#f3b7b0", line: "#8a5f47", blush: "#e88a8a", eye: "#3a2a26" };
+    var blanco = { fur: "#f4e7ec", fur2: "#ffffff", belly: "#fffafb", inner: "#ffbfd6", line: "#c99aa9", blush: "#ff9fc4", eye: "#5a3a4a" };
+
+    dibujarConejito(ctx, cx + 34 * s, oy, s, -0.05, blanco);
+    dibujarConejito(ctx, cx - 34 * s, oy, s, 0.18, marron, true);
+    dibujarCorazon(ctx, cx + 2 * s, oy - 4 * s, 0.35 * s, "#ff3d7f");
+  }
+
   var INIT = { ded: function (sr, api) {
   var IDEAS = [
     { label: "Feliz cumpleaños", text: "¡Feliz cumpleaños! Que este nuevo año te traiga mucha alegría, buena salud y todo lo bonito que mereces. Gracias por ser tú." },
@@ -1237,122 +1381,6 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
     guardar: "M7 4h18v24l-9-7-9 7V4z"
   };
 
-  function dibujarCorazon(ctx, x, y, s, color) {
-    ctx.save();
-    ctx.translate(x, y); ctx.scale(s, s);
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(0, 5);
-    ctx.bezierCurveTo(-9, -4, -16, 3, -8, 11);
-    ctx.bezierCurveTo(-4, 15, 0, 18, 0, 18);
-    ctx.bezierCurveTo(0, 18, 4, 15, 8, 11);
-    ctx.bezierCurveTo(16, 3, 9, -4, 0, 5);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
-  }
-
-  function dibujarConejito(ctx, x, y, s, rot, c, beso) {
-    ctx.save();
-    ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
-    ctx.lineJoin = "round"; ctx.lineCap = "round";
-    ctx.strokeStyle = c.line;
-
-    function oreja(signo) {
-      ctx.save();
-      ctx.translate(signo * 20, -30);
-      ctx.rotate(signo * 0.22);
-      var g = ctx.createLinearGradient(0, -64, 0, 10);
-      g.addColorStop(0, c.fur2); g.addColorStop(1, c.fur);
-      ctx.fillStyle = g; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.ellipse(0, -26, 14, 38, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = c.inner;
-      ctx.beginPath(); ctx.ellipse(0, -26, 7.5, 28, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    }
-    oreja(-1); oreja(1);
-
-    var bg = ctx.createLinearGradient(0, 20, 0, 100);
-    bg.addColorStop(0, c.fur2); bg.addColorStop(1, c.fur);
-    ctx.fillStyle = bg; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.ellipse(0, 52, 34, 42, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle = c.belly;
-    ctx.beginPath(); ctx.ellipse(0, 58, 20, 27, 0, 0, Math.PI * 2); ctx.fill();
-
-    ctx.fillStyle = c.fur2; ctx.lineWidth = 3;
-    [[-18, 92], [18, 92]].forEach(function (f) {
-      ctx.beginPath(); ctx.ellipse(f[0], f[1], 16, 10, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    });
-
-    ctx.fillStyle = c.fur; ctx.lineWidth = 2.6;
-    [[-1, -0.55], [1, 0.55]].forEach(function (a) {
-      ctx.save(); ctx.translate(a[0] * 34, 42); ctx.rotate(a[1]);
-      ctx.beginPath(); ctx.ellipse(0, 0, 18, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.restore();
-    });
-
-    var hg = ctx.createRadialGradient(-12, -22, 4, 0, -8, 48);
-    hg.addColorStop(0, c.fur2); hg.addColorStop(1, c.fur);
-    ctx.fillStyle = hg; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.ellipse(0, -8, 40, 38, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle = c.blush; ctx.globalAlpha = 0.55;
-    [[-25, 2], [25, 2]].forEach(function (b) {
-      ctx.beginPath(); ctx.ellipse(b[0], b[1], 8, 5, 0, 0, Math.PI * 2); ctx.fill();
-    });
-    ctx.globalAlpha = 1;
-
-    if (beso) {
-      ctx.strokeStyle = c.eye; ctx.lineWidth = 2.6; ctx.lineCap = "round";
-      [[-15, -15], [15, -15]].forEach(function (o) {
-        ctx.beginPath(); ctx.arc(o[0], o[1] + 2, 5, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
-      });
-      ctx.fillStyle = "#d96a8f";
-      ctx.beginPath(); ctx.ellipse(30, 2, 4.8, 3.6, 0.15, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "rgba(120, 45, 70, .45)";
-      ctx.beginPath(); ctx.ellipse(31.5, 3, 2, 1.4, 0.15, 0, Math.PI * 2); ctx.fill();
-    } else {
-      ctx.fillStyle = c.eye;
-      [[-15, -14], [15, -14]].forEach(function (o) {
-        ctx.beginPath(); ctx.ellipse(o[0], o[1], 3.6, 5.5, 0, 0, Math.PI * 2); ctx.fill();
-      });
-      ctx.fillStyle = "#ffffff";
-      [[-16.2, -16], [13.8, -16]].forEach(function (o) {
-        ctx.beginPath(); ctx.arc(o[0], o[1], 1.4, 0, Math.PI * 2); ctx.fill();
-      });
-
-      ctx.fillStyle = "#d96a8f";
-      ctx.beginPath();
-      ctx.moveTo(0, -2);
-      ctx.bezierCurveTo(-3, -5, -6, -3, -3, 0);
-      ctx.bezierCurveTo(-1, 2, 1, 2, 3, 0);
-      ctx.bezierCurveTo(6, -3, 3, -5, 0, -2);
-      ctx.closePath(); ctx.fill();
-
-      ctx.strokeStyle = c.line; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(0, 1); ctx.bezierCurveTo(-2, 5, -7, 5, -8, 1); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, 1); ctx.bezierCurveTo(2, 5, 7, 5, 8, 1); ctx.stroke();
-    }
-
-    ctx.restore();
-  }
-
-  function dibujarConejitos(ctx, cx, baseY, s) {
-    var oy = baseY - 106 * s;
-
-    dibujarCorazon(ctx, cx - 8 * s, oy - 98 * s, 0.85 * s, "#ff6fa5");
-    dibujarCorazon(ctx, cx + 26 * s, oy - 112 * s, 0.65 * s, "#ff3d7f");
-    dibujarCorazon(ctx, cx + 52 * s, oy - 86 * s, 0.5 * s, "#ff9cc4");
-    dibujarCorazon(ctx, cx - 42 * s, oy - 78 * s, 0.45 * s, "#ff9cc4");
-
-    var marron = { fur: "#c99a7a", fur2: "#e7c5aa", belly: "#f7e2cf", inner: "#f3b7b0", line: "#8a5f47", blush: "#e88a8a", eye: "#3a2a26" };
-    var blanco = { fur: "#f4e7ec", fur2: "#ffffff", belly: "#fffafb", inner: "#ffbfd6", line: "#c99aa9", blush: "#ff9fc4", eye: "#5a3a4a" };
-
-    dibujarConejito(ctx, cx + 34 * s, oy, s, -0.05, blanco);
-    dibujarConejito(ctx, cx - 34 * s, oy, s, 0.18, marron, true);
-    dibujarCorazon(ctx, cx + 2 * s, oy - 4 * s, 0.35 * s, "#ff3d7f");
-  }
-
   async function crearImagen() {
     var texto = msg.value.trim();
     if (!texto) {
@@ -1620,13 +1648,13 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
   var linkBtn = document.createElement("button");
   linkBtn.type = "button"; linkBtn.className = "btn sec"; linkBtn.textContent = "Compartir enlace";
   acts.insertBefore(linkBtn, sr.getElementById("guardar"));
-  linkBtn.addEventListener("click", function () {
+  linkBtn.addEventListener("click", async function () {
     if (location.protocol === "file:") {
       nota.textContent = "Abre la página desde GitHub Pages para compartir el enlace.";
       return;
     }
     var url;
-    try { url = window.__ramaAPI && window.__ramaAPI.enlace ? window.__ramaAPI.enlace() : ""; }
+    try { url = window.__ramaAPI && window.__ramaAPI.enlace ? await window.__ramaAPI.enlace() : ""; }
     catch (e) { logErr("no se pudo generar el enlace", e); }
     if (!url) { nota.textContent = "No se pudo generar el enlace. Inténtalo de nuevo."; return; }
     var copiarFallback = function () {
@@ -1673,8 +1701,17 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
     if (obj.d) sr.getElementById("sub").textContent = obj.d + " te envió un ramo 💐";
     window.__ramaImagen(function (src) {
       if (src) {
+        var frame = document.createElement("div"); frame.className = "ramo-frame";
         var im = new Image(); im.className = "card"; im.alt = "Ramo con dedicatoria"; im.src = src;
-        cont.appendChild(im);
+        frame.appendChild(im);
+        var conejos = document.createElement("canvas");
+        conejos.className = "bunnies"; conejos.width = 480; conejos.height = 640;
+        conejos.setAttribute("aria-hidden", "true");
+        var cctx = conejos.getContext("2d");
+        cctx.scale(2, 2);
+        dibujarConejitos(cctx, 120, 290, 1.15);
+        frame.appendChild(conejos);
+        cont.appendChild(frame);
       } else {
         fin("No pudimos previsualizar el ramo, pero puedes crear el tuyo.");
       }
@@ -1689,21 +1726,31 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
       acc.hidden = false;
       var g = sr.getElementById("guardar");
       g.addEventListener("click", function () {
-        if (!src) return;
-        fetch(src).then(function (r) { return r.blob(); }).then(function (b) {
-          var u = URL.createObjectURL(b), a = document.createElement("a");
-          a.href = u; a.download = "ramo.png"; document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
-          msg.textContent = "Si no se descargó, mantén presionada la imagen (o clic derecho) y elige \"Guardar imagen\".";
-        }).catch(function (e) {
-          logErr("no se pudo descargar el ramo del enlace", e);
-          msg.textContent = "No se pudo descargar. Mantén presionada la imagen para guardarla.";
+        window.__ramaImagen(function (descarga) {
+          if (!descarga) return;
+          fetch(descarga).then(function (r) { return r.blob(); }).then(function (b) {
+            var u = URL.createObjectURL(b), a = document.createElement("a");
+            a.href = u; a.download = "ramo.png"; document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+            msg.textContent = "Si no se descargó, mantén presionada la imagen (o clic derecho) y elige \"Guardar imagen\".";
+          }).catch(function (e) {
+            logErr("no se pudo descargar el ramo del enlace", e);
+            msg.textContent = "No se pudo descargar. Mantén presionada la imagen para guardarla.";
+          });
         });
       });
-    });
+    }, { sinFondo: true });
   }
 
-  /* Ramo compartido por enlace (?d=...): vista recibida + crear el propio */
+  /* Ramo compartido por enlace (?z=... comprimido o ?d=... anterior) */
+  if (api.disenoObj) {
+    if (window.__ramaAPI && window.__ramaAPI.importar(api.disenoObj, { persist: false })) {
+      mostrarRamoEnlace(api.disenoObj);
+    } else {
+      fin("Este enlace de ramo no es válido o está incompleto.");
+    }
+    return;
+  }
   if (api.diseno) {
     var enlace = null;
     try { enlace = JSON.parse(window.__b64.d(api.diseno)); }
@@ -1781,17 +1828,32 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
   }
   window.__ir = ir;
   montar("ded"); document.getElementById("v-ded").hidden = true;
-  var c = null, d = null;
+  var c = null, d = null, z = null;
   try {
     var qs = new URLSearchParams(location.search);
     var hs = new URLSearchParams((location.hash || "").replace(/^#/, ""));
     c = qs.get("c") || hs.get("c");
     d = qs.get("d") || hs.get("d");
+    z = qs.get("z") || hs.get("z");
   } catch (e) { logErr("no se pudo leer el enlace desde la URL", e); }
-  if (!d && window.__DISENO_INICIAL) d = window.__DISENO_INICIAL;
-  if (d) { API.diseno = d; ir("rec"); }
-  else if (c) { API.codigo = c.toLowerCase().replace(/[^a-z0-9]/g, ""); ir("rec"); }
-  else ir("ramo");
+  async function arrancar() {
+    if (z) {
+      try {
+        var obj = JSON.parse(await window.__ramaZ.d(z));
+        if (obj && Array.isArray(obj.i)) {
+          API.disenoObj = obj;
+          ir("rec");
+          return;
+        }
+        throw new Error("diseño comprimido inválido");
+      } catch (e) { logErr("no se pudo descomprimir el enlace del ramo", e); }
+    }
+    if (!d && window.__DISENO_INICIAL) d = window.__DISENO_INICIAL;
+    if (d) { API.diseno = d; ir("rec"); }
+    else if (c) { API.codigo = c.toLowerCase().replace(/[^a-z0-9]/g, ""); ir("rec"); }
+    else ir("ramo");
+  }
+  arrancar().catch(function (e) { logErr("no se pudo abrir el enlace", e); ir("ramo"); });
 })();
 </script>
 
@@ -1804,7 +1866,7 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
   try {
     var qs = new URLSearchParams(location.search);
     var hs = new URLSearchParams((location.hash || "").replace(/^#/, ""));
-    compartido = !!(qs.get("d") || qs.get("c") || hs.get("d") || hs.get("c") || window.__DISENO_INICIAL);
+    compartido = !!(qs.get("d") || qs.get("c") || qs.get("z") || hs.get("d") || hs.get("c") || hs.get("z") || window.__DISENO_INICIAL);
   } catch (e) {}
   if (!compartido) p.hidden = false;
   function cerrar(){ p.hidden = true; }
