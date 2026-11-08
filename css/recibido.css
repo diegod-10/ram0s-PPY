@@ -13,11 +13,12 @@
     animation: pop .7s cubic-bezier(.2,1.4,.4,1) both;
   }
   .sub { margin: 0; color: var(--muted); }
-  .ramo-frame { position: relative; margin-top: 120px; }
+  .rec-head { display: flex; align-items: center; gap: 6px; }
+  .rec-copy { flex: 1 1 auto; min-width: 0; display: grid; gap: 18px; }
+  .ramo-frame { position: relative; margin-top: 0; }
   .ramo-frame img.card { position: relative; z-index: 1; }
   img.card { width: 100%; height: auto; display: block; border-radius: 18px; background: transparent; filter: drop-shadow(0 16px 26px rgba(70,40,110,.38)); animation: rise .8s .2s ease both; }
-  .bunnies { position: absolute; z-index: 2; top: -87px; right: -4px; width: clamp(84px, 21vw, 110px); height: auto; pointer-events: none; filter: drop-shadow(0 10px 14px rgba(70,40,110,.25)); animation: rise .8s .35s ease both; }
-  @media (max-width: 600px) { .ramo-frame { margin-top: 70px; } .bunnies { top: -52px; right: -2px; } }
+  .bunnies { position: relative; top: 12px; flex: 0 0 auto; align-self: center; width: clamp(84px, 21vw, 110px); height: auto; pointer-events: none; filter: drop-shadow(0 10px 14px rgba(70,40,110,.25)); animation: rise .8s .35s ease both; }
   .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   .btn { font: inherit; font-weight: 600; padding: 13px 22px; border-radius: 999px; border: 2px solid var(--accent); cursor: pointer; text-decoration: none; display: inline-block; }
   .primary { background: var(--accent); color: #fff; }
