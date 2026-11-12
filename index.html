@@ -1057,12 +1057,12 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
 
   var INIT = { ded: function (sr, api) {
   var IDEAS = [
-    { label: "Feliz cumpleaños", text: "¡Feliz cumpleaños! Que este nuevo año te traiga mucha alegría, buena salud y todo lo bonito que mereces. Gracias por ser tú." },
-    { label: "Te quiero", text: "Quería que supieras cuánto te quiero. Eres una de las mejores cosas que me han pasado, y cada día me alegra tenerte cerca." },
-    { label: "Gracias por todo", text: "Gracias por estar siempre, por escucharme y por tu cariño sin pedir nada a cambio. Hoy quiero decirte que lo valoro muchísimo." },
-    { label: "Perdóname", text: "Perdóname de corazón. Sé que me equivoqué y no quiero que eso se interponga entre nosotros. Eres muy importante para mí." },
-    { label: "Feliz aniversario", text: "Feliz aniversario. Gracias por cada momento compartido y por todo lo que vendrá. Elegiría de nuevo caminar a tu lado." },
-    { label: "Pensé en ti", text: "Hoy pensé en ti y quise regalarte una sonrisa. Que estas flores te recuerden lo mucho que te aprecio." }
+    { label: "Feliz cumpleaños", text: "Feliz cumpleaños. Hoy toca celebrar que existes y que el mundo es más llevadero contigo. Ojalá este año te encuentre riendo más, durmiendo mejor y haciendo eso que siempre dejas para después. Estas flores son solo la excusa." },
+    { label: "Te quiero", text: "Te quiero, y no solo cuando todo es fácil. También cuando hay silencios raros, días largos y planes que se caen. Me gusta la vida contigo: lo cotidiano, las tonterías, tu forma de contar las cosas. Quería que lo supieras sin tanto rodeo." },
+    { label: "Gracias por todo", text: "No sé si te lo digo lo suficiente: gracias. Por escuchar cuando hablo de más, por quedarte cuando no estoy en mi mejor versión y por esas pequeñas cosas que haces sin darles importancia. Ojalá pueda devolverte algo de todo eso." },
+    { label: "Perdóname", text: "Perdóname. No vengo a justificarme ni a pedir que lo olvides rápido; vengo a decirte que me importas y que me duele haberte fallado. Si me dejas, quiero escucharte, entender lo que pasó y hacerlo mejor. Sin excusas." },
+    { label: "Feliz aniversario", text: "Feliz aniversario. No recuerdo todas las fechas, pero sí cómo se siente estar contigo: como llegar a casa después de un día eterno. Gracias por seguir eligiendo esto, incluso los días en que no es tan bonito. Vamos por más." },
+    { label: "Pensé en ti", text: "Pensé en ti de repente, como pasan las cosas que importan. No era una fecha especial ni tenía una excusa: solo quería que tuvieras un detalle y que supieras que hay alguien que se acuerda de ti en medio de un día cualquiera." }
   ];
   var KEY = "dedicatoria-borrador";
   var KEY_RAMO = "ramo"; // aquí la primera página debe guardar el ramo armado
@@ -1900,13 +1900,6 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
   var p = document.getElementById("amorPopup");
   var b = document.getElementById("amorPopupBtn");
   if (!p || !b) return;
-  var compartido = false;
-  try {
-    var qs = new URLSearchParams(location.search);
-    var hs = new URLSearchParams((location.hash || "").replace(/^#/, ""));
-    compartido = !!(qs.get("d") || qs.get("c") || qs.get("z") || hs.get("d") || hs.get("c") || hs.get("z") || window.__DISENO_INICIAL);
-  } catch (e) {}
-  if (!compartido) p.hidden = false;
   function cerrar(){ p.hidden = true; }
   b.addEventListener("click", cerrar);
   p.addEventListener("click", function(e){ if (e.target === p) cerrar(); });
