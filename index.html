@@ -561,9 +561,19 @@ document.querySelector('.tools').addEventListener('click',e=>{
   refresh();
 });
 document.addEventListener('keydown',e=>{
-  if(S.view||e.altKey||!(e.ctrlKey||e.metaKey))return;
+  if(e.defaultPrevented)return;
   const vr=document.getElementById('v-ramo');
   if(!vr||vr.hidden)return;
+  if(e.key==='Delete'&&!e.altKey&&!e.ctrlKey&&!e.metaKey){
+    if(S.view||!S.sel)return;
+    const t=e.target;
+    if(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))return;
+    const it=get(S.sel);if(!it)return;
+    e.preventDefault();push();
+    S.items=S.items.filter(i=>i!==it);S.sel=null;refresh();
+    return;
+  }
+  if(S.view||e.altKey||!(e.ctrlKey||e.metaKey))return;
   const k=e.key.toLowerCase();
   if(k==='z'){e.preventDefault();e.shiftKey?redo():undo()}
   else if(k==='y'){e.preventDefault();redo()}
@@ -1711,7 +1721,7 @@ window.__ramaAPI={exportar:exportarRamo,importar:importarRamo,enlace:enlaceCompa
       if (navigator.share) {
         navigator.share({
           title: "¡Recibiste un ramo!",
-          text: "Abre este enlace para ver el ramo que te envié 🌸",
+          text: "Abre este enlace para ver el ramo 🌸",
           url: url
         }).catch(function (e) {
           if (e && e.name === "AbortError") return;
